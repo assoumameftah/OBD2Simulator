@@ -9,18 +9,11 @@ import java.util.concurrent.ThreadLocalRandom;
 public class OBD2Simulator {
     private static final byte FRAME_DELIMITER = (byte) 0xF8;
     private static final byte ESCAPE_BYTE = (byte) 0xF7;
-    private static final byte ESCAPED_DELIMITER = (byte) 0x0F;
-    private static final byte ESCAPED_ESCAPE = (byte) 0x00;
     private static final byte GPS_DATA = (byte) 0x01;
     private static final byte LBS_DATA = (byte) 0x02;
     private static final byte STT_DATA = (byte) 0x03;
     private static final byte MGR_DATA = (byte) 0x04;
-    private static final byte ADC_DATA = (byte) 0x05;
-    private static final byte GFS_DATA = (byte) 0x06;
     private static final byte OBD_DATA = (byte) 0x07;
-    private static final byte FUL_DATA = (byte) 0x08;
-    private static final byte OAL_DATA = (byte) 0x09;
-    private static final byte HDB_DATA = (byte) 0x0A;
 
     private String deviceId;
     private Socket socket;
@@ -87,8 +80,8 @@ public class OBD2Simulator {
             addStatusData(frame);
             addMileageData(frame);
 
-            byte[] frameData = frame.toByteArray();
-            int crc = calculateCRC16(frameData);
+            byte[] frameDataForCRC = frame.toByteArray();
+            int crc = calculateCRC16(frameDataForCRC);
             frame.write((crc >> 8) & 0xFF);
             frame.write(crc & 0xFF);
 
@@ -220,18 +213,16 @@ public class OBD2Simulator {
     public byte[] escapeBytes(byte[] data) {
         ByteArrayOutputStream escaped = new ByteArrayOutputStream();
         for (byte b : data) {
-            if (b == FRAME_DELIMITER) {
+            if (b == FRAME_DELIMITER || b == ESCAPE_BYTE) {
                 escaped.write(ESCAPE_BYTE);
-                escaped.write(ESCAPED_DELIMITER);
-            } else if (b == ESCAPE_BYTE) {
-                escaped.write(ESCAPE_BYTE);
-                escaped.write(ESCAPED_ESCAPE);
+                escaped.write(b ^ ESCAPE_BYTE);
             } else {
                 escaped.write(b);
             }
         }
         return escaped.toByteArray();
     }
+
 
     public byte[] encapsulateFrame(byte[] frameData) {
         byte[] escapedData = escapeBytes(frameData);
